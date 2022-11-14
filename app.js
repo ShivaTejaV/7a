@@ -111,25 +111,34 @@ app.get("/players/:playerId/matches", async (request, response) => {
 //API 6
 
 app.get("/matches/:matchId/players", async (request, response) => {
-  const id = parseInt(request.params.matchId);
-  const q6 = `
-    SELECT player_id as playerId,player_name as playerName
-    FROM (match_details NATURAL JOIN player_match_score) NATURAL JOIN player_details;
-    `;
-  const dbResponse = await db.all(q6);
-  console.log(dbResponse);
-  response.send(dbResponse);
+  try {
+    const { matchId } = request.params;
+    const id = parseInt(matchId);
+    const q6 = `
+        SELECT player_match_score.player_id as playerId,player_details.player_name as playerName
+        FROM player_details JOIN player_match_score
+        ON player_match_score.player_id = player_details.player_id
+        WHERE player_match_score.match_id = ${matchId};`;
+    const dbResponse = await db.all(q6);
+    //console.log(dbResponse);
+    response.send(dbResponse);
+  } catch (e) {
+    console.log(e);
+  }
 });
 
 //API 7
 
 app.get("/players/:playerId/playerScores", async (request, response) => {
-  const id = parseInt(request.params.playerId);
+  const { playerId } = request.params;
+  const id = parseInt(playerId);
   const q7 = `
-    SELECT su(score)
-    FROM (player_details NATURAL JOIN player_match_score) NATURAL JOIN match_details
-    WHERE player_id = ${id};`;
-  const dbResponse = await db.all(q7);
+    SELECT player_match_score.player_id as playerId,player_details.player_name as playerName, sum(score) as totalScore ,sum(fours) as totalFours, sum(sixes) as totalSixes
+    FROM player_details JOIN player_match_score ON player_details.player_id = player_match_score.player_id
+    WHERE player_match_score.player_id = ${id}
+    GROUP BY player_match_score.player_id
+    ;`;
+  const dbResponse = await db.get(q7);
   console.log(dbResponse);
   response.send(dbResponse);
 });
